@@ -3,94 +3,46 @@
 <head>
     <meta charset="utf-8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://unpkg.com/@telegram-apps/sdk@3.4.0/dist/core/umd/index.js"></script>
     <title>QR Сканер</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-        h1 { margin: 0 0 20px; font-size: 28px; }
-        #status { font-size: 18px; margin: 10px 0; }
-        #result { font-size: 22px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 15px; margin: 20px; display: none; }
-        #scanBtn { padding: 20px 40px; font-size: 20px; background: #00ff88; color: black; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
-        .controls { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-        button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; }
-        #torchBtn { background: #ffcc00; color: black; }
-        #torchBtn.active { background: #ff9900; }
+        body { font-family: sans-serif; text-align: center; padding: 40px 20px; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+        h1 { font-size: 32px; margin: 0 0 20px; }
+        #status { font-size: 20px; margin: 20px 0; }
+        button { padding: 20px 40px; font-size: 20px; background: #00ff88; color: black; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 15px 35px rgba(0,255,136,0.4); margin: 10px; }
+        #qrResult { font-size: 18px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 15px; margin: 20px; display: none; }
     </style>
 </head>
 <body>
-    <h1>📱 QR для расходов</h1>
-    <div id="status">Готов к сканированию</div>
-    <button id="scanBtn">🎥 Открыть камеру</button>
-    <div id="result"></div>
-    <div class="controls" style="display:none;">
-        <button id="torchBtn">🔦 Фонарик</button>
-        <button id="rescanBtn" style="display:none;">🔄 Повторить</button>
-    </div>
+    <h1>📱 QR для церкви</h1>
+    <div id="status">Сканируй QR для расходов</div>
+    <button onclick="scanQr()">🎥 Сканировать QR</button>
+    <div id="qrResult"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-        tg.MainButton.setText('Отправить').setParams({color: '#00ff88'}).hide();
+        tg.MainButton.setText('✅ Добавить').setParams({color: '#00ff88'}).hide();
 
-        const sdk = TelegramApps.init();
-        const { qrScanner } = sdk;
-        const status = document.getElementById('status');
-        const result = document.getElementById('result');
-        const scanBtn = document.getElementById('scanBtn');
-        const controls = document.querySelector('.controls');
-        const torchBtn = document.getElementById('torchBtn');
-        const rescanBtn = document.getElementById('rescanBtn');
-        let scanning = false;
-
-        scanBtn.onclick = async () => {
-            if (!qrScanner.open.isAvailable()) {
-                status.textContent = 'QR недоступен (обнови Telegram)';
-                return;
+        function scanQr() {
+            if (tg.showScanQrPopup) {
+                tg.showScanQrPopup({text: 'Наведи на QR-код расходов'}, (qr) => {
+                    if (qr) {
+                        document.getElementById('qrResult').textContent = qr;
+                        document.getElementById('qrResult').style.display = 'block';
+                        document.getElementById('status').textContent = 'QR готов!';
+                        tg.MainButton.show();
+                    }
+                });
+            } else {
+                document.getElementById('status').textContent = 'Обнови Telegram (API 6.4+)';
             }
+        }
 
-            scanning = true;
-            scanBtn.style.display = 'none';
-            status.textContent = 'Наведи на QR-код';
-            controls.style.display = 'flex';
-            torchBtn.classList.remove('active');
-
-            qrScanner.open({
-                text: 'Наведи камеру',
-                onCaptured: (qr) => {
-                    qrScanner.close();
-                    scanning = false;
-                    result.textContent = qr;
-                    result.style.display = 'block';
-                    status.textContent = 'Готово!';
-                    tg.MainButton.show();
-                    rescanBtn.style.display = 'inline-block';
-                    return true;
-                }
-            }).catch(e => {
-                scanning = false;
-                scanBtn.style.display = 'block';
-                controls.style.display = 'none';
-                status.textContent = 'Ошибка камеры: ' + e.message;
-            });
-        };
-
-        torchBtn.onclick = () => {
-            torchEnabled = !torchEnabled;
-            torchBtn.textContent = torchEnabled ? '🔦 Выкл' : '🔦 Фонарик';
-            torchBtn.classList.toggle('active');
-        };
-
-        rescanBtn.onclick = () => {
-            result.style.display = 'none';
-            tg.MainButton.hide();
-            rescanBtn.style.display = 'none';
-            scanBtn.style.display = 'block';
-            status.textContent = 'Готов к сканированию';
-        };
-
-        tg.MainButton.onClick(() => tg.sendData(result.textContent));
-        document.addEventListener('visibilitychange', () => scanning && qrScanner.close());
+        tg.MainButton.onClick(() => {
+            tg.sendData(document.getElementById('qrResult').textContent);
+            tg.close();
+        });
     </script>
 </body>
 </html>

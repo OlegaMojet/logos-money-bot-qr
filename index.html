@@ -7,72 +7,90 @@
     <title>QR Сканер</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
-        h1 { margin: 0 0 10px; }
+        h1 { margin: 0 0 20px; font-size: 28px; }
         #status { font-size: 18px; margin: 10px 0; }
-        #result { font-size: 24px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin: 10px 20px; display: none; }
-        .controls { position: fixed; bottom: 20px; left: 20px; right: 20px; display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; backdrop-filter: blur(10px); }
+        #result { font-size: 22px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 15px; margin: 20px; display: none; }
+        #scanBtn { padding: 20px 40px; font-size: 20px; background: #00ff88; color: black; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,255,136,0.3); }
+        .controls { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; }
         #torchBtn { background: #ffcc00; color: black; }
         #torchBtn.active { background: #ff9900; }
     </style>
 </head>
 <body>
-    <h1>📱 Сканер QR</h1>
-    <div id="status">Открываю камеру...</div>
+    <h1>📱 QR для расходов</h1>
+    <div id="status">Готов к сканированию</div>
+    <button id="scanBtn">🎥 Открыть камеру</button>
     <div id="result"></div>
     <div class="controls" style="display:none;">
         <button id="torchBtn">🔦 Фонарик</button>
-        <button id="closeBtn">❌ Закрыть</button>
+        <button id="rescanBtn" style="display:none;">🔄 Повторить</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        tg.MainButton.setText('Отправить').setParams({color: '#00ff88'}).hide();
 
         const sdk = TelegramApps.init();
         const { qrScanner } = sdk;
         const status = document.getElementById('status');
         const result = document.getElementById('result');
+        const scanBtn = document.getElementById('scanBtn');
         const controls = document.querySelector('.controls');
         const torchBtn = document.getElementById('torchBtn');
-        let torchEnabled = false;
+        const rescanBtn = document.getElementById('rescanBtn');
+        let scanning = false;
 
-        // Автозапуск с callback
-        if (qrScanner.open.isAvailable()) {
+        scanBtn.onclick = async () => {
+            if (!qrScanner.open.isAvailable()) {
+                status.textContent = 'QR недоступен (обнови Telegram)';
+                return;
+            }
+
+            scanning = true;
+            scanBtn.style.display = 'none';
             status.textContent = 'Наведи на QR-код';
             controls.style.display = 'flex';
+            torchBtn.classList.remove('active');
 
             qrScanner.open({
-                text: 'Сканируй QR-код для расходов',
+                text: 'Наведи камеру',
                 onCaptured: (qr) => {
                     qrScanner.close();
+                    scanning = false;
                     result.textContent = qr;
                     result.style.display = 'block';
-                    status.textContent = 'QR найден!';
-                    tg.MainButton.setText('✅ Отправить в бот').setParams({color: '#00ff88'}).show();
-                    tg.HapticFeedback.notificationOccurred('success');
-                    return true;  // Закрыть сканер
+                    status.textContent = 'Готово!';
+                    tg.MainButton.show();
+                    rescanBtn.style.display = 'inline-block';
+                    return true;
                 }
+            }).catch(e => {
+                scanning = false;
+                scanBtn.style.display = 'block';
+                controls.style.display = 'none';
+                status.textContent = 'Ошибка камеры: ' + e.message;
             });
-        } else {
-            status.textContent = 'QR-сканер недоступен на устройстве';
-        }
+        };
 
-        // Фонарик toggle
         torchBtn.onclick = () => {
             torchEnabled = !torchEnabled;
             torchBtn.textContent = torchEnabled ? '🔦 Выкл' : '🔦 Фонарик';
             torchBtn.classList.toggle('active');
-            tg.HapticFeedback.impactOccurred('light');
         };
 
-        document.getElementById('closeBtn').onclick = () => {
-            qrScanner.close();
-            tg.close();
+        rescanBtn.onclick = () => {
+            result.style.display = 'none';
+            tg.MainButton.hide();
+            rescanBtn.style.display = 'none';
+            scanBtn.style.display = 'block';
+            status.textContent = 'Готов к сканированию';
         };
 
         tg.MainButton.onClick(() => tg.sendData(result.textContent));
+        document.addEventListener('visibilitychange', () => scanning && qrScanner.close());
     </script>
 </body>
 </html>

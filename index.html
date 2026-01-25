@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@telegram-apps/sdk@3.3.0/dist/tma.min.js"></script>
+    <title>QR Scanner</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        button { padding: 10px 20px; font-size: 16px; }
+        #result { margin-top: 20px; font-size: 18px; color: green; }
+    </style>
+</head>
+<body>
+    <h1>Сканируй QR-код</h1>
+    <button id="scanBtn">Запустить сканер</button>
+    <div id="result"></div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const sdk = window.TelegramApps.init();
+        const { qrScanner } = sdk;
+
+        document.getElementById('scanBtn').onclick = async () => {
+            if (!qrScanner.open.isAvailable()) {
+                alert('QR-сканер недоступен');
+                return;
+            }
+
+            const btn = document.getElementById('scanBtn');
+            btn.textContent = 'Сканирую...';
+            btn.disabled = true;
+
+            try {
+                const scannedQr = await qrScanner.open({
+                    text: 'Наведи на QR-код'
+                });
+                document.getElementById('result').innerHTML = `Содержимое: <strong>${scannedQr}</strong>`;
+                tg.sendData(scannedQr);  // Отправить в бот
+            } catch (e) {
+                alert('Сканирование отменено');
+            } finally {
+                btn.textContent = 'Запустить сканер';
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>

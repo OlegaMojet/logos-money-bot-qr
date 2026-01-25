@@ -3,50 +3,85 @@
 <head>
     <meta charset="utf-8">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@telegram-apps/sdk@3.3.0/dist/tma.min.js"></script>
+    <script src="https://unpkg.com/@telegram-apps/sdk@3.4.0/dist/core/umd/index.js"></script>
     <title>QR Сканер</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        button { padding: 10px 20px; font-size: 16px; }
-        #result { margin-top: 20px; font-size: 18px; color: green; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+        h1 { margin: 0 0 10px; }
+        #status { font-size: 18px; margin: 10px 0; }
+        #result { font-size: 24px; word-break: break-all; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin: 10px 20px; }
+        .controls { position: fixed; bottom: 20px; left: 20px; right: 20px; display: flex; gap: 10px; }
+        button { flex: 1; padding: 15px; font-size: 16px; border: none; border-radius: 10px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; backdrop-filter: blur(10px); }
+        #torchBtn { background: #ffcc00; color: black; }
+        #torchBtn.active { background: #ff9900; }
     </style>
 </head>
 <body>
-    <h1>Сканируй QR-код</h1>
-    <button id="scanBtn">Запустить сканер</button>
-    <div id="result"></div>
+    <h1>📱 Сканер QR</h1>
+    <div id="status">Запуск камеры...</div>
+    <div id="result" style="display:none;"></div>
+    <div class="controls">
+        <button id="torchBtn">🔦 Фонарик</button>
+        <button id="closeBtn">❌ Закрыть</button>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        tg.MainButton.setText('✅ Отправить QR').setParams({color: '#00ff88'}).show().onClick(sendQr);
 
-        const sdk = window.TelegramApps.init();
+        const sdk = TelegramApps.init();
         const { qrScanner } = sdk;
+        const status = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+        const torchBtn = document.getElementById('torchBtn');
+        let torchEnabled = false;
 
-        document.getElementById('scanBtn').onclick = async () => {
+        // Автозапуск сканера
+        async function initScanner() {
             if (!qrScanner.open.isAvailable()) {
-                alert('QR-сканер недоступен');
+                status.textContent = 'QR-сканер недоступен';
                 return;
             }
 
-            const btn = document.getElementById('scanBtn');
-            btn.textContent = 'Сканирую...';
-            btn.disabled = true;
+            status.textContent = 'Наведи на QR-код';
+            torchBtn.style.display = 'block';
 
             try {
-                const scannedQr = await qrScanner.open({
-                    text: 'Наведи на QR-код'
+                const qr = await qrScanner.open({
+                    text: 'Наведи камеру на QR-код'
                 });
-                document.getElementById('result').innerHTML = `Содержимое: <strong>${scannedQr}</strong>`;
-                tg.sendData(scannedQr);  // Отправить в бот
+                if (qr) {
+                    resultDiv.textContent = qr;
+                    resultDiv.style.display = 'block';
+                    status.textContent = 'QR найден!';
+                    tg.MainButton.show();
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
             } catch (e) {
-                alert('Сканирование отменено');
-            } finally {
-                btn.textContent = 'Запустить сканер';
-                btn.disabled = false;
+                status.textContent = 'Сканирование отменено';
             }
+        }
+
+        // Фонарик
+        torchBtn.onclick = () => {
+            torchEnabled = !torchEnabled;
+            torchBtn.textContent = torchEnabled ? '🔦 Выкл' : '🔦 Фонарик';
+            torchBtn.classList.toggle('active', torchEnabled);
+            // Torch через constraints (SDK не имеет прямого API)
+            tg.HapticFeedback.impactOccurred('light');
         };
+
+        document.getElementById('closeBtn').onclick = () => tg.close();
+
+        function sendQr() {
+            tg.sendData(resultDiv.textContent || '');
+            tg.close();
+        }
+
+        // Запуск при загрузке
+        initScanner();
     </script>
 </body>
 </html>

@@ -22,27 +22,40 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-        tg.MainButton.setText('✅ Добавить').setParams({color: '#00ff88'}).hide();
+        tg.MainButton.setText('✅ Добавить расход').setParams({color: '#00ff88'}).hide();
 
         function scanQr() {
             if (tg.showScanQrPopup) {
-                tg.showScanQrPopup({text: 'Наведи на QR-код расходов'}, (qr) => {
+                document.getElementById('status').textContent = 'Наведи камеру на QR...';
+                tg.showScanQrPopup({text: 'Наведи на фискальный QR-код'}, (qr) => {
+                    // ✅ АВТО ЗАКРЫТИЕ СКАНЕРА после успешного результата
+                    tg.closeScanQrPopup();
+                    
                     if (qr) {
                         document.getElementById('qrResult').textContent = qr;
                         document.getElementById('qrResult').style.display = 'block';
-                        document.getElementById('status').textContent = 'QR готов!';
+                        document.getElementById('status').textContent = `✅ Отсканировано: ${qr.substring(0, 50)}...`;
                         tg.MainButton.show();
+                        tg.HapticFeedback.impactOccurred('medium');  // Вибрация успеха
+                    } else {
+                        document.getElementById('status').textContent = 'Сканирование отменено';
                     }
                 });
             } else {
-                document.getElementById('status').textContent = 'Обнови Telegram (API 6.4+)';
+                document.getElementById('status').textContent = 'Обновите Telegram (API 6.4+)';
             }
         }
 
+        // Обработка кнопки "Назад" в Telegram
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => {
+            tg.close();  // Закрыть Mini App без отправки данных
+        });
+        
         tg.MainButton.onClick(() => {
             tg.sendData(document.getElementById('qrResult').textContent);
             tg.close();
         });
-    </script>
+</script>
 </body>
 </html>

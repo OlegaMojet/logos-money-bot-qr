@@ -33,9 +33,15 @@
                     if (qr) {
                         document.getElementById('qrResult').textContent = qr;
                         document.getElementById('qrResult').style.display = 'block';
-                        document.getElementById('status').textContent = `✅ Отсканировано: ${qr.substring(0, 50)}...`;
-                        tg.MainButton.show();
+                        document.getElementById('status').textContent = `✅ Отправка данных...`;
                         tg.HapticFeedback.impactOccurred('medium');
+                        
+                        // АВТООТПРАВКА: отправляем данные сразу после сканирования
+                        setTimeout(() => {
+                            tg.sendData(qr);
+                            tg.close();
+                        }, 500);  // Небольшая задержка 0.5 сек для показа статуса
+                        
                     } else {
                         document.getElementById('status').textContent = 'Сканирование отменено';
                     }
@@ -48,10 +54,9 @@
         // АВТОЗАПУСК СКАНЕРА ПРИ ПАРАМЕТРЕ autostart=1
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('autostart') === '1') {
-            // Запуск сканера сразу при загрузке
             setTimeout(() => {
                 scanQr();
-            }, 300);  // Небольшая задержка для инициализации WebApp
+            }, 300);
         }
 
         tg.BackButton.show();
@@ -59,6 +64,7 @@
             tg.close();
         });
         
+        // MainButton теперь не нужна, но оставим на случай ручного использования
         tg.MainButton.onClick(() => {
             tg.sendData(document.getElementById('qrResult').textContent);
             tg.close();

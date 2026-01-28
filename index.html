@@ -28,7 +28,6 @@
             if (tg.showScanQrPopup) {
                 document.getElementById('status').textContent = 'Наведи камеру на QR...';
                 tg.showScanQrPopup({text: 'Наведи на фискальный QR-код'}, (qr) => {
-                    // ✅ АВТО ЗАКРЫТИЕ СКАНЕРА после успешного результата
                     tg.closeScanQrPopup();
                     
                     if (qr) {
@@ -36,7 +35,7 @@
                         document.getElementById('qrResult').style.display = 'block';
                         document.getElementById('status').textContent = `✅ Отсканировано: ${qr.substring(0, 50)}...`;
                         tg.MainButton.show();
-                        tg.HapticFeedback.impactOccurred('medium');  // Вибрация успеха
+                        tg.HapticFeedback.impactOccurred('medium');
                     } else {
                         document.getElementById('status').textContent = 'Сканирование отменено';
                     }
@@ -46,16 +45,24 @@
             }
         }
 
-        // Обработка кнопки "Назад" в Telegram
+        // АВТОЗАПУСК СКАНЕРА ПРИ ПАРАМЕТРЕ autostart=1
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('autostart') === '1') {
+            // Запуск сканера сразу при загрузке
+            setTimeout(() => {
+                scanQr();
+            }, 300);  // Небольшая задержка для инициализации WebApp
+        }
+
         tg.BackButton.show();
         tg.BackButton.onClick(() => {
-            tg.close();  // Закрыть Mini App без отправки данных
+            tg.close();
         });
         
         tg.MainButton.onClick(() => {
             tg.sendData(document.getElementById('qrResult').textContent);
             tg.close();
         });
-</script>
+    </script>
 </body>
 </html>
